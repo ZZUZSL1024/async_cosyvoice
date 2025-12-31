@@ -32,12 +32,14 @@ class AsyncCosyVoice2:
         self.fp16 = fp16
         if not os.path.exists(model_dir):
             model_dir = snapshot_download(model_dir)
-        with open('{}/cosyvoice2.yaml'.format(model_dir), 'r') as f:
+        config_path = self._resolve_config_path(model_dir)
+        with open(config_path, 'r') as f:
             configs = load_hyperpyyaml(f, overrides={'model_path': model_dir})
+        speech_tokenizer_path = self._resolve_speech_tokenizer_path(model_dir)
         self.frontend = CosyVoiceFrontEnd(configs['get_tokenizer'],
                                           configs['feat_extractor'],
                                           '{}/campplus.onnx'.format(model_dir),
-                                          '{}/speech_tokenizer_v2.onnx'.format(model_dir),
+                                          speech_tokenizer_path,
                                           '{}/spk2info.pt'.format(model_dir),
                                           configs['allowed_special'])
         self.sample_rate = configs['sample_rate']
@@ -61,6 +63,33 @@ class AsyncCosyVoice2:
                                 '{}/flow.decoder.estimator.fp32.onnx'.format(model_dir),
                                 self.fp16)
         del configs
+
+    @staticmethod
+    def _resolve_config_path(model_dir: str) -> str:
+        candidate_files = [
+            'cosyvoice3.yaml',
+            'cosyvoice3.yml',
+            'cosyvoice.yaml',
+            'cosyvoice.yml',
+            'cosyvoice2.yaml',
+        ]
+        for filename in candidate_files:
+            config_path = os.path.join(model_dir, filename)
+            if os.path.exists(config_path):
+                return config_path
+        raise FileNotFoundError(f'No CosyVoice config yaml found in {model_dir}')
+
+    @staticmethod
+    def _resolve_speech_tokenizer_path(model_dir: str) -> str:
+        candidate_files = [
+            'speech_tokenizer_v3.onnx',
+            'speech_tokenizer_v2.onnx',
+        ]
+        for filename in candidate_files:
+            path = os.path.join(model_dir, filename)
+            if os.path.exists(path):
+                return path
+        raise FileNotFoundError(f'No speech tokenizer found in {model_dir}')
 
     def list_available_spks(self):
         spks = list(self.frontend.spk2info.keys())
