@@ -27,10 +27,21 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 
 from cosyvoice.flow.flow import CausalMaskedDiffWithXvec
-from cosyvoice.flow.flow_matching import EstimatorWrapper
+from cosyvoice.flow import flow_matching
 from cosyvoice.hifigan.generator import HiFTGenerator
 from cosyvoice.utils.common import fade_in_out
 from cosyvoice.utils.file_utils import convert_onnx_to_trt
+
+EstimatorWrapper = (
+    getattr(flow_matching, "EstimatorWrapper", None)
+    or getattr(flow_matching, "EstimatorWrapperV2", None)
+    or getattr(flow_matching, "Estimator", None)
+)
+if EstimatorWrapper is None:
+    raise ImportError(
+        "Could not find EstimatorWrapper in cosyvoice.flow.flow_matching. "
+        "Please check your CosyVoice version."
+    )
 
 # 启用vllm V1版本
 os.environ["VLLM_USE_V1"] = '1'
